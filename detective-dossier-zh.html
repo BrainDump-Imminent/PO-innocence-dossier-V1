@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0c10">
+<title>案件档案 — 所有现役卷宗</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Oswald:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #e8dcc8;
+    --ink-dim: #a09070;
+    --paper: #0a0c10;
+    --card: #0f1218;
+    --card2: #141820;
+    --border: rgba(200,170,100,0.12);
+    --border-hot: rgba(200,60,40,0.5);
+    --red: #c82030;
+    --red-dim: rgba(200,32,48,0.12);
+    --amber: #c8901a;
+    --amber-dim: rgba(200,144,26,0.1);
+    --green: #1a7a40;
+    --scan: rgba(200,170,100,0.02);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Courier Prime', monospace;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      var(--scan) 2px, var(--scan) 3px
+    );
+    pointer-events: none; z-index: 9999;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 50% at 20% 10%, rgba(200,32,48,0.04) 0, transparent 60%),
+      radial-gradient(ellipse 50% 60% at 80% 90%, rgba(200,144,26,0.03) 0, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .wrap { max-width: 1300px; margin: 0 auto; padding: 48px 24px 80px; padding-left: max(24px, env(safe-area-inset-left)); padding-right: max(24px, env(safe-area-inset-right)); position: relative; z-index: 1; }
+
+  /* ── HEADER ── */
+  .dossier-header {
+    text-align: center;
+    margin-bottom: 72px;
+    position: relative;
+  }
+  .dossier-header::after {
+    content: '';
+    display: block;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--red) 30%, var(--amber) 70%, transparent);
+    margin-top: 40px;
+  }
+  .stamp {
+    display: inline-block;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--red);
+    border: 2px solid var(--red);
+    padding: 5px 18px;
+    border-radius: 2px;
+    margin-bottom: 28px;
+    opacity: 0.85;
+    transform: rotate(-1.5deg);
+    display: inline-block;
+    position: relative;
+  }
+  .stamp::before {
+    content: '';
+    position: absolute; inset: 3px;
+    border: 1px solid var(--red);
+    opacity: 0.4;
+  }
+  .dossier-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(36px, 6vw, 72px);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--ink);
+    text-shadow: 0 0 60px rgba(200,32,48,0.15);
+  }
+  .dossier-header h1 em {
+    font-style: italic;
+    color: var(--red);
+  }
+  .dossier-sub {
+    margin-top: 16px;
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .case-count {
+    display: inline-flex; gap: 28px;
+    margin-top: 20px;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--ink-dim);
+  }
+  .case-count span { color: var(--amber); }
+
+  /* ── SECTION DIVIDER ── */
+  .section-label {
+    display: flex; align-items: center; gap: 18px;
+    margin: 64px 0 32px;
+  }
+  .section-label::before, .section-label::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border));
+  }
+  .section-label::after { background: linear-gradient(90deg, var(--border), transparent); }
+  .section-label-text {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+    font-size: 11px;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--amber);
+    white-space: nowrap;
+  }
+
+  /* ── CASE GRID ── */
+  .cases-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(560px, 1fr));
+    gap: 28px;
+  }
+
+  /* ── CASE CARD ── */
+  .case-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .case-card:hover {
+    border-color: rgba(200,144,26,0.3);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(200,144,26,0.08) inset;
+  }
+  .case-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--red), var(--amber));
+  }
+
+  .case-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    padding: 22px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+  }
+  .case-num-badge {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--paper);
+    background: var(--red);
+    padding: 3px 10px;
+    border-radius: 1px;
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+  .case-num-badge.cc { background: var(--amber); color: #0a0c10; }
+  .case-title-block { flex: 1; }
+  .case-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--ink);
+    margin-bottom: 3px;
+  }
+  .case-title-en {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    font-style: italic;
+  }
+  .diff-badge {
+    font-family: 'Oswald', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    padding: 2px 8px;
+    border-radius: 1px;
+    flex-shrink: 0;
+    margin-top: 3px;
+    text-transform: uppercase;
+  }
+  .diff-EXPERT { border: 1px solid rgba(200,32,48,0.5); color: var(--red); }
+  .diff-ADVANCED { border: 1px solid rgba(200,144,26,0.4); color: var(--amber); }
+  .diff-STANDARD { border: 1px solid rgba(100,180,100,0.4); color: #5ab870; }
+  .diff-COLD { border: 1px solid rgba(100,150,200,0.4); color: #6aabe0; }
+
+  .case-teaser {
+    padding: 16px 24px 20px;
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: #b8a888;
+    border-bottom: 1px solid var(--border);
+  }
+  .case-teaser::first-letter {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    font-weight: 700;
+    float: left;
+    line-height: 0.85;
+    margin: 4px 6px 0 0;
+    color: var(--red);
+  }
+
+  /* ── SUSPECTS SECTION ── */
+  .suspects-label {
+    padding: 12px 24px 10px;
+    font-size: 9.5px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .suspects-label::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .suspects-row {
+    display: flex; gap: 0;
+    padding: 0 16px 20px;
+    gap: 12px;
+  }
+
+  /* ── SUSPECT CARD ── */
+  .suspect-card {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 14px;
+    position: relative;
+    min-width: 0;
+  }
+  .suspect-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(200,144,26,0.03) 0, transparent 60%);
+    pointer-events: none;
+  }
+
+  /* ── MUGSHOT ── */
+  .mugshot-wrap {
+    flex-shrink: 0;
+    position: relative;
+    width: 80px;
+  }
+  .mugshot-frame {
+    width: 80px;
+    height: 88px;
+    background: #0d1018;
+    border: 2px solid rgba(200,170,100,0.2);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .mugshot-frame::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(200,32,48,0.08) 0, transparent 40%);
+  }
+  .mugshot-ruler {
+    position: absolute; right: 0; top: 0; bottom: 0;
+    width: 9px;
+    background: repeating-linear-gradient(
+      180deg,
+      rgba(200,170,100,0.15) 0px, rgba(200,170,100,0.15) 1px,
+      transparent 1px, transparent 8px
+    );
+    border-left: 1px solid rgba(200,170,100,0.15);
+  }
+  .mugshot-canvas {
+    image-rendering: pixelated;
+    display: block;
+    width: 64px;
+    height: 64px;
+  }
+  .mugshot-label {
+    text-align: center;
+    font-size: 7.5px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-top: 5px;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+  }
+
+  /* ── SUSPECT INFO ── */
+  .suspect-info { flex: 1; min-width: 0; }
+  .suspect-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .suspect-role {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--amber);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+  }
+  .suspect-desc {
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: #8a7a5a;
+    font-style: italic;
+  }
+
+  /* ── REDACTED CORNER ── */
+  .redacted-corner {
+    position: absolute;
+    bottom: 12px; right: 12px;
+    width: 28px; height: 28px;
+    border-bottom: 2px solid rgba(200,32,48,0.2);
+    border-right: 2px solid rgba(200,32,48,0.2);
+  }
+
+  /* ── DECLASSIFIED STAMP ── */
+  .case-stamp {
+    position: absolute;
+    top: 18px; right: 18px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    color: var(--red);
+    border: 1px solid rgba(200,32,48,0.25);
+    padding: 2px 6px;
+    opacity: 0.5;
+    transform: rotate(8deg);
+  }
+
+  /* ── RESPONSIVE ── */
+
+  /* Tablet: collapse to single column */
+  @media (max-width: 700px) {
+    .cases-grid {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+  }
+
+  /* Mobile: comprehensive layout fixes */
+  @media (max-width: 500px) {
+    /* Wrapper */
+    .wrap {
+      padding: 28px 14px 56px;
+    }
+
+    /* Header */
+    .dossier-header {
+      margin-bottom: 40px;
+    }
+    .dossier-header::after {
+      margin-top: 28px;
+    }
+    .stamp {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      padding: 4px 12px;
+      margin-bottom: 18px;
+    }
+    .dossier-sub {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+    }
+    .case-count {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px 20px;
+      font-size: 10px;
+    }
+
+    /* Section dividers */
+    .section-label {
+      margin: 40px 0 20px;
+    }
+    .section-label-text {
+      font-size: 9px;
+      letter-spacing: 0.25em;
+    }
+
+    /* Case card header: stack badge+diff on top, title below */
+    .case-header {
+      flex-wrap: wrap;
+      padding: 16px 16px 12px;
+      gap: 10px;
+    }
+    .case-title-block {
+      order: 3;
+      flex-basis: 100%;
+    }
+    .case-num-badge {
+      order: 1;
+      font-size: 10px;
+    }
+    .diff-badge {
+      order: 2;
+      margin-top: 0;
+      margin-left: auto;
+    }
+    .case-title {
+      font-size: 18px;
+    }
+    .case-title-en {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+    }
+
+    /* Teaser */
+    .case-teaser {
+      padding: 14px 16px 16px;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .case-teaser::first-letter {
+      font-size: 20px;
+    }
+
+    /* Suspects section */
+    .suspects-label {
+      padding: 10px 16px 8px;
+      font-size: 9px;
+      letter-spacing: 0.25em;
+    }
+    .suspects-row {
+      flex-direction: column;
+      padding: 0 12px 16px;
+      gap: 10px;
+    }
+
+    /* Suspect card */
+    .suspect-card {
+      padding: 12px;
+      gap: 12px;
+    }
+
+    /* Mugshot — slightly smaller to give text more room */
+    .mugshot-wrap { width: 68px; }
+    .mugshot-frame {
+      width: 68px;
+      height: 76px;
+    }
+    .mugshot-canvas {
+      width: 54px;
+      height: 54px;
+    }
+    .mugshot-label {
+      font-size: 7px;
+    }
+
+    /* Suspect info — allow name to wrap */
+    .suspect-name {
+      font-size: 14px;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: unset;
+    }
+    .suspect-role {
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .suspect-desc {
+      font-size: 11px;
+      line-height: 1.65;
+    }
+  }
+
+  /* Very small phones */
+  @media (max-width: 360px) {
+    .wrap { padding: 20px 12px 48px; }
+    .case-title { font-size: 16px; }
+    .mugshot-wrap, .mugshot-frame { width: 60px; }
+    .mugshot-frame { height: 68px; }
+    .mugshot-canvas { width: 48px; height: 48px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="dossier-header">
+    <div class="stamp">&#9632; 机密情报档案 &#9632;</div>
+    <h1>案件 <em>档案</em></h1>
+    <div class="dossier-sub">刑事调查部门 — 现役与冷案卷宗</div>
+    <div class="case-count">
+      案件总数：<span>25</span> &nbsp;|&nbsp;
+      嫌疑人总数：<span>50</span> &nbsp;|&nbsp;
+      状态：<span>未结案</span>
+    </div>
+  </div>
+
+  <!-- SECTION 1-5 -->
+  <div class="section-label"><span class="section-label-text">案件001–005 · 第一系列</span></div>
+  <div class="cases-grid" id="grid-1"></div>
+
+  <!-- SECTION 6-10 -->
+  <div class="section-label"><span class="section-label-text">案件006–010 · 第二系列</span></div>
+  <div class="cases-grid" id="grid-2"></div>
+
+  <!-- SECTION 11-15 -->
+  <div class="section-label"><span class="section-label-text">案件011–015 · 第三系列</span></div>
+  <div class="cases-grid" id="grid-3"></div>
+
+  <!-- SECTION 16-20 -->
+  <div class="section-label"><span class="section-label-text">案件016–020 · 国际卷宗</span></div>
+  <div class="cases-grid" id="grid-4"></div>
+
+  <!-- COLD CASES -->
+  <div class="section-label"><span class="section-label-text">冷案档案 · 未侦破</span></div>
+  <div class="cases-grid" id="grid-cc"></div>
+
+</div>
+
+<script>
+// ─── SPRITE ENGINE ───────────────────────────────────────────
+const PAL = {
+  mw:{_:null,O:"#0d0d1a",s:"#ddb896",S:"#ffe5c9",d:"#a67c52",h:"#4a3728",H:"#6b5038",c:"#1a2a4a",C:"#2d4470",L:"#3d5a8a",W:"#d8d0c8",P:"#1a1a2e",B:"#222244",E:"#e0d0c0"},
+  dr:{_:null,O:"#0d0d1a",s:"#ddb896",S:"#ffe5c9",d:"#a67c52",h:"#1a1520",H:"#2e2535",T:"#2a8a7a",t:"#1a5a50",L:"#3aaa90",W:"#e8e0d8",P:"#2a5a50",p:"#1a4a40",R:"#cc4444"},
+  ga:{_:null,O:"#0d0d1a",s:"#d8b090",S:"#f0d8c0",d:"#a07858",h:"#a0a0a8",H:"#c0c0c8",G:"#383848",g:"#505060",L:"#686878",W:"#e0d8d0",R:"#a03030",r:"#701818",P:"#303040",E:"#d8c8b8"},
+  lv:{_:null,O:"#0d0d1a",s:"#e0c0a0",S:"#f5e0c8",d:"#b89870",h:"#201828",H:"#382838",W:"#e8e8e0",w:"#c8c8c0",l:"#d8d8d0",T:"#3888a0",t:"#286878",P:"#2a2a3a",p:"#1a1a2a"},
+  tb:{_:null,O:"#0d0d1a",s:"#d0a880",S:"#f0d0b0",d:"#a07050",h:"#4a3020",H:"#6a4830",F:"#8b3a30",f:"#6a2820",L:"#aa5848",W:"#e0d8c8",P:"#3a3028",p:"#2a2018"},
+  ro:{_:null,O:"#0d0d1a",s:"#8b6040",S:"#b08060",d:"#6a4028",h:"#1a1018",H:"#2a2028",N:"#2a3a5a",n:"#1a2a48",B:"#4a5a7a",W:"#e0d8d0",P:"#2a2a30",E:"#c0a070"},
+  jc:{_:null,O:"#0d0d1a",s:"#d0a880",S:"#e8c8a8",d:"#a07858",h:"#282020",H:"#383028",K:"#2a2a32",k:"#1a1a22",M:"#3a3a44",W:"#d8d0c8",G:"#484850",T:"#505058"},
+  nv:{_:null,O:"#0d0d1a",s:"#e0c0a0",S:"#f5dcc0",d:"#b89870",h:"#c0a050",H:"#d8b860",U:"#1a2848",u:"#0e1830",B:"#2a3860",W:"#e8e8e0",G:"#c8a030",R:"#cc4444"},
+  dh:{_:null,O:"#0d0d1a",s:"#d8b090",S:"#f0d0b0",d:"#a07858",h:"#2a2028",H:"#3a3038",V:"#6a2030",v:"#4a1020",M:"#8a3848",W:"#e8e0d8",w:"#c8c0b8",T:"#c8a060"},
+  it:{_:null,O:"#0d0d1a",s:"#e0c0a0",S:"#f0dcc8",d:"#b89870",h:"#1a1520",H:"#2a2530",C:"#e8e8e0",c:"#d0d0c8",W:"#f0f0e8",w:"#d8d8d0",P:"#2a2a30",p:"#1a1a20",A:"#d05040"}
+};
+
+const DATA = {
+  mw:["________________________________","__________OOOOOOOOOO____________","________OOhHHHHHHHHhOO__________","_______OhHHHHHHHHHHHHhO_________","______OhHHHHHHHHHHHHHHhO________","______OHHHHHHHHHHHHHHHhO________","______OHHHHHHHHHHHHHHHhO________","______OhOOSSSSSSSSSSSOOhO_______","______OhSSSSSSSSSSSSSSSO________","______OhSSSSSSSSSSSSSSSO________","_______OSSdddSSSSSdddSSO________","_______OSSWOSSSSSSWOSSSO________","_______OsSSSSSSSSSSSSSsO________","_______OsSSSSSSSSSSSSSsO________","________OsSSSSSSddSSSsO_________","________OsSSSSSSSdSSSsO_________","________OsSSSSSSSSSSSSO_________","________OSSSSSdddddSSSO_________","________OsSSSSSSSSSSSsO_________","________OOsSSSSSSSSSsOO_________","_________OOOsSSSSSsOOO__________","___________OOOsssOOO____________","__________OOOSWWWOOO____________","_________OOWWWCCWWWOO___________","________OCCCCCCCCCCCCO__________","_______OCCCCCLCCCCCCCO__________","________________________________","________________________________","________________________________","________________________________","________________________________","________________________________"],
+  dr:["________________________________","____________OOOOOOOOO___________","__________OHHHHHHHHHO___________","________OOhHHHHHHHHHHO__________","_______OhHHHHHHHHHHHHhO_________","______OHHHHHHHHHHHHHHhHO________","______OHHHHHHHHHHHHHHhHO________","______OhOOSSSSSSSSSSSOOHO_______","_______OhSSSSSSSSSSSSSSHO_______","_______OhSSSSSSSSSSSSSShO_______","_______OSSdddSSSSSdddSShO_______","_______OSSWOSSSSSSWOSSSHO_______","_______OsSSSSSSSSSSSsSRhO_______","________OsSSSSSSSSSSSssO________","________OsSSSSSSSdSSSSsO________","________OsSSSSSSSdSSSSsO________","________OsSSSSSSSSSSSSsO________","_________OSSSSddddSSSsO_________","_________OsSSSSSSSSSSSO_________","_________OOsSSSSSSSsOO__________","__________OOOsSSSsOOO___________","___________OOOsssOOO____________","___________OOsWWWsOO____________","_________OOWWTTTTWWOO___________","________OTTTTTTTTTTTTO__________","________OTTTTTTLTTTTO___________","________________________________","________________________________","________________________________","________________________________","________________________________","________________________________"],
+  ga:["________________________________","_________OOOOOOOOOOOO___________","________OhHHHHHHHHHHhO__________","_______OHHHHHHHHHHHHHhO_________","______OHHHHHHHHHHHHHHHHO________","______OHHHHHHHHHHHHHHHO_________","______OHHHHHHHHHHHHHHHHO________","______OSOSSSSSSSSSSSSSOhO_______","______OSSSSSSSSSSSSSSSSO________","______OSSSSSSSSSSSSSSSSO________","_______OSSddSSSSSSSddSSO________","_______OSSWOSSSSSSWOSSSO________","_______OOsSSSSSSSSSSSsOO________","_______OsSSSSSSSSSSSSSSO________","_______OsSSSSSSSddSSSSsO________","_______OsSSSSSSSSSSSSSsO________","_______OsSSSSSSSSSSSSSsO________","_______OSSSSSSdddddSSSSO________","_______OsSSSSSSSSSSSSSSO________","_______OOsSSSSSSSSSSSSsO________","________OOOsSSSSSSSsOOO_________","_________OOOOsssssOOOO__________","_________OOOsWWRWWsOOO__________","________OOWWWWRWWWWOO___________","________OgGGGGRGGGGGO___________","_______OGGGGGGGGGGGGGO__________","________________________________","________________________________","________________________________","________________________________","________________________________","________________________________"],
+  lv:["________________________________","__________OOOOOOOOO_____________","_________OHHHHHHHHHHO___________","________OhHHHHHHHHHHhO__________","_______OhHHHHHHHHHHHHhO_________","______OhHHHHHHHHHHHHHHhO________","______OHHHHHHHHHHHHHHHhO________","______OhHOSSSSSSSSSSSOHhO_______","______OhHSSSSSSSSSSSSSOHO_______","______OhHSSSSSSSSSSSSSShO_______","______OhHSSddSSSSSddSSHhO_______","______OhHSWOSSSSSSOWSShO________","______OhOsSSSSSSSSSSSsOhO_______","______OHOsSSSSSSSSSSSsOHO_______","______OHOsSSSSSSdSSSSsOHO_______","______OHOsSSSSSSSSSSSsOHO_______","______OHOsSSSSSSSSSSSsOHO_______","_______OHOSSSSSdddSSSSOHO_______","_______OHOsSSSSSSSSSsSHO________","_______OHOOsSSSSSSSsOOHO________","_______OhHOOsSSSSSsOOHhO________","________OhHOOOsssOOOHhO_________","________OhHOOsWWWsOOHhO_________","________OOhOWWTTTWWOhOO_________","________OOhOTTTTTTTOhOO_________","________OOOOTTTtTTTOOOO_________","________________________________","________________________________","________________________________","________________________________","________________________________","________________________________"],
+  tb:["________________________________","__________OhOOOOOOOhO___________","________OOhHHHHHHHHHhOO_________","_______OHHhHHHHHHHHHHhO_________","______OhHHHHHHHHHHHHHHhO________","______OHHHHHHHHHHHHHHHHO________","______OhHHHHHHHHHHHHHhOO________","______OhOOSSSSSSSSSSSOOhO_______","______OSSSSSSSSSSSSSSSSO________","______OSSSSSSSSSSSSSSSSO________","_______OSSdddSSSSSdddSSO________","_______OSSWOSSSSSSWOSSSO________","_______OsSSSSSSSSSSSSSsO________","_______OsSSSSSSSSSSSSSsO________","________OsSSSSSdSSSSSSO_________","________OsSSSSSdSSSSSSO_________","________OsSSSSSSSSSSSSO_________","________OSSSSSdddddSSSO_________","________OsSSSSSSSSSSSSO_________","________OOsSSSSSSSSssOO_________","_________OOOsSSSSSsOOO__________","___________OOOsssOOO____________","__________OOOsWWWsOOO___________","_________OOWWFFLFFWOO___________","________OFFFfFFFFFfFFO__________","________OFFFFfLFFFFFfO__________","________________________________","________________________________","________________________________","________________________________","________________________________","________________________________"],
+  ro:["________________________________","___________OOOOOOOOO____________","_________OOhHHHHHHHhOO__________","________OhHHHHHHHHHHHhO_________","_______OhHHHHHHHHHHHHhOO________","_______OHHHHHHHHHHHHHHHO________","_______OHHHHHHHHHHHHHHhO________","_______OhOOSSSSSSSSSOOhO________","_______OhSSSSSSSSSSSSShO________","_______OhSSSSSSSSSSSSSsO________","_______OSSdddSSSSSdddSSO________","_______OSSWOSSSSSSWOSSSO________","________OsSSSSSSSSSSSsO_________","________OsSSSSSSSSSSSsO_________","________OsSSSSSdSSSSSSO_________","________OsSSSSSSSSSSSsO_________","________OsSSSSSSSSSSSSO_________","_________OSSSSdddSSSSSO_________","_________OsSSSSSSSSSsSO_________","_________OOsSSSSSSSsOO__________","__________OOOsSSSsOOO___________","___________OOOsssOOO____________","___________OOsWWWsOO____________","_________OOWWWNNNWWOO___________","________ONNNNnNNNnNNNO__________","________ONNNNNBNNNNnNO__________","________________________________","________________________________","________________________________","________________________________","________________________________","________________________________"],
+  jc:["________________________________","___________OOOOOOOOO____________","_________OOhHHHHHHHhOO__________","________OhHHHHHHHHHHHhO_________","_______OhHHHHHHHHHHHHhhO________","_______OhHHHHHHHHHHHHhOO________","_______OhHHHHHHHHHHHHhO_________","_______OhOOSSSSSSSSSOOhO________","_______OSSSSSSSSSSSSSSO_________","_______OSSSSSSSSSSSSSSO_________","_______OSSdddSSSSSdddSSO________","_______OSSWOSSSSSSWOSSSO________","_______OsSSSSSSSSSSSSSsO________","________OsSSSSSSSSSSSsO_________","________OsSSSSSdSSSSSSO_________","________OsSSSSSdSSSSSSO_________","________OsSSSSSSSSSSSSO_________","________OSSSSSdddddSSSO_________","________OsSSSSSSSSSSSSO_________","________OOsSSSSSSSSssOO_________","_________OOOsSSSSSsOOO__________","___________OOOsssOOO____________","__________OOOsWWWsOOO___________","_________OOWWKKKKWWOO___________","________OKKKKkKKKkKKKO__________","________OKKKKKMKKKKkKO__________","________________________________","________________________________","________________________________","________________________________","________________________________","________________________________"],
+  nv:["________________________________","____________OOOOOOOOO___________","__________OHHHHHHHHHhO__________","________OOhHHHHHHHHHHhO_________","_______OhHHHHHHHHHHHHHhO________","______OHHHHHHHHHHHHHHHhHO_______","______OHHHHHHHHHHHHHHHhHO_______","______OhOOSSSSSSSSSSSOOHO_______","_______OhSSSSSSSSSSSSSSHO_______","_______OhSSSSSSSSSSSSSShO_______","_______OSSdddSSSSSdddSShO_______","_______OSSWOSSSSSSWOSSSHO_______","_______OsSSSSSSSSSSSsSShO_______","________OsSSSSSSSSSSSssO________","________OsSSSSSSSdSSSSsO________","________OsSSSSSSSdSSSSsO________","________OsSSSSSSSSSSSSsO________","_________OSSSSddddSSSsO_________","_________OsSSSSSSSSSSSO_________","_________OOsSSSSSSSsOO__________","__________OOOsSSSsOOO___________","___________OOOsssOOO____________","___________OOsWWWsOO____________","_________OOWWUGGUWWOO___________","________OUUUUUUUUUUUUO__________","________OUUUUUBUUUUuUO__________","________________________________","________________________________","________________________________","________________________________","________________________________","________________________________"],
+  dh:["________________________________","___________OOOOOOOOO____________","_________OOhHHHHHHHhOO__________","________OhHHHHHHHHHHHhO_________","_______OhHHHHHHHHHHHHHhO________","_______OHHHHHHHHHHHHHHHO________","_______OhHHHHHHHHHHHHhOO________","_______OhOOSSSSSSSSSOOhO________","_______OhSSSSSSSSSSSSShO________","_______OhSSSSSSSSSSSSSsO________","_______OSSdddSSSSSdddSSO________","_______OSSWOSSSSSSWOSSSO________","________OsSSSSSSSSSSSsO_________","________OsSSSSSSSSSSSsO_________","________OsSSSSSdSSSSSSO_________","________OsSSSSSSSSSSSsO_________","________OsSSSSSSSSSSSSO_________","________OSSSSSSdddSSSSO_________","________OsSSSSSSSSSSsSO_________","________OOsSSSSSSSSsOO__________","_________OOOsSSSSSsOOO__________","___________OOOsssOOO____________","__________OOOsWWWsOOO___________","_________OOwWVTVVWwOO___________","________OVVVVvVVVvVVVO__________","________OVVVVVMVVVVvVO__________","________________________________","________________________________","________________________________","________________________________","________________________________","________________________________"],
+  it:["________________________________","___________OOOOOOOOO____________","_________OOhHHHHHHHhOO__________","________OhHHHHHHHHHHHhO_________","_______OhHHHHHHHHHHHHHhO________","______OhHHHHHHHHHHHHHHHhO_______","______OHHHHHHHHHHHHHHHHhO_______","______OhHOSSSSSSSSSSSOHhO_______","______OhHSSSSSSSSSSSSSOhO_______","______OhHSSSSSSSSSSSSSShO_______","______OhSSSddSSSSSddSSShO_______","______OhSSWOSSSSSSOWSSShO_______","______OhOsSSSSSSSSSSSsOhO_______","______OHOsSSSSSSSSSSSsOHO_______","_______OOsSSSSSSSdSSSSOOO_______","_______OOsSSSSSSSSSSSSsOO_______","_______OOsSSSSSSSSSSSSsOO_______","________OOSSSSdddSSSSSOO________","________OOsSSSSSSSSSsOO_________","________OOOsSSSSSSSsOOO_________","_________OOOOsSSSsOOOO__________","__________OOOOsssOOOO___________","__________OOOsWWWsOOO___________","_________OOWWCCACCWwOO__________","________OCCCCCCCCCCCCO__________","________OCCCCCcCCCCCCO__________","________________________________","________________________________","________________________________","________________________________","________________________________","________________________________"]
+};
+
+function drawSprite(canvas, key, scale) {
+  const rows = DATA[key];
+  const pal  = PAL[key];
+  if (!rows || !pal) return;
+  canvas.width = 32; canvas.height = 32;
+  canvas.style.width  = (32 * scale) + 'px';
+  canvas.style.height = (32 * scale) + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, 32, 32);
+  for (let r = 0; r < 32; r++) {
+    const row = rows[r] || '';
+    for (let c = 0; c < 32; c++) {
+      const col = pal[row[c] || '_'];
+      if (col) { ctx.fillStyle = col; ctx.fillRect(c, r, 1, 1); }
+    }
+  }
+}
+
+// ─── CASE DATA ───────────────────────────────────────────────
+const CASES = [
+  // ── Series I ──────────────────────────────────────────────
+  {num:"001",group:"1",diff:"EXPERT",
+   title:"孤屿灯塔",titleEn:"The Solitary Isle Lighthouse",
+   teaser:"灯塔守护人周怀山被发现死于塔下礁石之上——正是那盏灯熄灭之夜。后脑遭受钝器重击，伪装成意外坠落。当晚岛上仅有三人。",
+   suspects:[
+    {name:"林岱",role:"代班灯塔守护人，48岁",sprite:"mw",
+     desc:"案发当夜名义上已离岛。文件显示他在邻近小镇——但文件可以伪造。他将继承这个职位、宿舍，以及那份寂静。"},
+    {name:"韩泽",role:"「鸟类研究员」（寄住者），39岁",sprite:"jc",
+     desc:"他自称研究海鸟，但所属机构无其记录。潜水袋中藏有一根与灯塔栏杆完全吻合的撬杆。他夜间外出，从不亮灯。"}
+   ]},
+  {num:"002",group:"1",diff:"ADVANCED",
+   title:"蜡像馆的第十三具",titleEn:"The Thirteenth Figure",
+   teaser:"蜡像馆馆主田伯文被发现半身没入熔蜡槽中——头骨在蜡液接触前已被击碎。一座题有他名字的蜡像杰作，却是由他人之手塑成。",
+   suspects:[
+    {name:"邵青",role:"蜡像学徒，31岁",sprite:"tb",
+     desc:"在田氏门下学艺八年。第十三具蜡像耗费了他整整一年心血，如今为师父赚得八十万元，却连一丝署名都未曾给予他。"},
+    {name:"龚立",role:"早期投资人，50岁",sprite:"ga",
+     desc:"三年来追讨一笔一百二十万元的债款，换来的只有搪塞。当天下午他在蜡像馆，傍晚据他所说在宴会厅。"}
+   ]},
+  {num:"003",group:"1",diff:"EXPERT",
+   title:"子夜的钟摆",titleEn:"Midnight Pendulum",
+   teaser:"钟表大师程岱宗被发现压死于自己的大座钟之下——恰在午夜钟声响起之时。擒纵机构遭高手改动，当世仅有一人能做到此事。",
+   suspects:[
+    {name:"卫昌",role:"古董商，55岁",sprite:"dh",
+     desc:"三次出价购买大师的浑天仪钟均遭拒绝，心中积怨难平。大钟报时之际，他正在两省之外参加拍卖会。不在场证明有票据和录像为证。"},
+    {name:"顾澄",role:"制钟学徒，36岁",sprite:"tb",
+     desc:"十二年苦学，随后背叛——以师父名义伪造钟表并中饱私囊。师父已察觉此事。擒纵机构中一个定制铜卡钩，是唯一线索。"}
+   ]},
+  {num:"004",group:"1",diff:"ADVANCED",
+   title:"水箱遁术",titleEn:"The Water Escape",
+   teaser:"逃脱艺术家楼谦欢在一场爆满的表演中溺死于自己的水箱之内。安全插销被固定，气阀已关闭，救援斧不翼而飞。三百名目击者无一看见任何异常。",
+   suspects:[
+    {name:"莫凡",role:"舞台机械工程师，41岁",sprite:"jc",
+     desc:"他设计了水箱、机关以及每一处暗销。专利权却挂着别人的名字。下个季度的合同上，连他的名字都没有了。"},
+    {name:"苏雯",role:"舞台助理兼前伴侣，32岁",sprite:"dr",
+     desc:"她站在舞台左侧，手持幕布，整场演出全程在三百名目击者眼皮底下。她的不在场证明就是那些观众。但她的短信却是另一番说法。"}
+   ]},
+  {num:"005",group:"1",diff:"EXPERT",
+   title:"毒草园",titleEn:"The Poison Garden",
+   teaser:"植物学家苗承德被发现死于私人毒草园内。其下午茶中含有精确致死量的秋水仙碱，萃取自其温室内一株新剪的秋番红花。",
+   suspects:[
+    {name:"钟阳",role:"园艺助手，34岁",sprite:"ga",
+     desc:"他打理园中每一株毒植物。整个下午他都在城里的菜市场摆摊——收据、时间戳与摄像头可以证明。"},
+    {name:"邱明",role:"商业合伙人，50岁",sprite:"dh",
+     desc:"十年来以劣质萃取物以次充好，中间差价落入私囊。会计师已发现账目异常，解除合伙协议的函件已草拟完毕。下午茶一向是他来泡。"}
+   ]},
+
+  // ── Series II ─────────────────────────────────────────────
+  {num:"006",group:"2",diff:"EXPERT",
+   title:"琴房的最后一课",titleEn:"Last Lesson in the Music Room",
+   teaser:"钢琴系主任沈玉芳被发现死于练琴室的钢琴旁——每晚必饮的草本茶中被下了氰化物。年度演出人选草案已定，而有一位学生早已知晓结果。",
+   suspects:[
+    {name:"裴晟",role:"助教，29岁",sprite:"mw",
+     desc:"他是系里的得力助手。那晚他声称比沈老师先行离开大楼。教学理念上的小摩擦，从来都未曾激化——直到如今。"},
+    {name:"谢鸣",role:"顶尖钢琴学生，23岁",sprite:"dr",
+     desc:"从小被培养为天选之人。她已看过草案——自己的名字不在独奏音乐会名单之内。得知此事，无异于饮下毒药。"}
+   ]},
+  {num:"007",group:"2",diff:"ADVANCED",
+   title:"深海标本室",titleEn:"The Deep Specimen Room",
+   teaser:"海洋分类学家何昌洲被发现死于甲醛标本罐之间——遭注射高浓度甲醛。一个新发现的深海物种，引发了一场最终演变为命案的署名权之争。",
+   suspects:[
+    {name:"方泠",role:"野外研究员，34岁",sprite:"lv",
+     desc:"她在一次单独潜水中发现了这件标本。新物种将以何氏命名，学术论文只列他一人。她除了亲历发现的记忆，什么都没留下。"},
+    {name:"林孝廉",role:"访问学者，47岁",sprite:"ga",
+     desc:"下午三点他已签退离场，入室记录如是记载。但他对那件标本的兴趣由来已久——他清楚甲醛能掩盖什么。"}
+   ]},
+  {num:"008",group:"2",diff:"ADVANCED",
+   title:"遗嘱公证夜",titleEn:"Will & Testament Night",
+   teaser:"退休航运大亨冯望海在遗嘱公证前夜被发现死亡——葡萄酒中被掺入研碎的安眠药。送往公证处的遗嘱，并非出自他本人之手。",
+   suspects:[
+    {name:"管家吴德厚",role:"家族管家，62岁",sprite:"ga",
+     desc:"二十三年忠诚侍奉。宅中每把钥匙皆在他手，每个橱柜、每套就寝习惯他都一清二楚。他高于怀疑之上，而这正是最危险的处境。"},
+    {name:"岑洋",role:"侄子兼唯一继承人，38岁",sprite:"jc",
+     desc:"三百万元赌债，还款期限为周四。原版遗嘱给了他一半遗产，而他提交公证的版本给了他全部——慈善遗赠已悄然消失。"}
+   ]},
+  {num:"009",group:"2",diff:"EXPERT",
+   title:"拍卖行的赝品局",titleEn:"The Forgery Auction",
+   teaser:"高级鉴定师秦朗在一场重大拍卖会前夕被发现死亡——茶中被下了砒霜。他那份已告失踪的鉴定报告，原本已将明日的头号拍品认定为赝品。",
+   suspects:[
+    {name:"傅薇",role:"鉴定助理，31岁",sprite:"dr",
+     desc:"在秦氏身边工作三年，可进出鉴定室每一个橱柜。她与委托人之间存在私下财务往来。鉴定报告草稿最后在她手中。"},
+    {name:"闵哲",role:"古董委托人，54岁",sprite:"dh",
+     desc:"明天上拍的那幅画是他委托的。秦朗已在草稿上写下两个字：疑似赝品。晚上九点前他已离开大楼——他这么说。"}
+   ]},
+  {num:"010",group:"2",diff:"ADVANCED",
+   title:"云端服务器间",titleEn:"The Cloud Server Room",
+   teaser:"首席安全架构师贝朗被发现死于自己的服务器机房——一氧化碳中毒，气体探测器遭人篡改。一份内部审计报告刚刚点名了一名嫌疑人，而那人就在机房之内。",
+   suspects:[
+    {name:"林佩茹",role:"数据工程师，35岁",sprite:"lv",
+     desc:"在贝朗举报其安全违规后，她的账号遭暂停。动机不言而喻。但没有有效凭证，她连服务器机房的门都打不开。"},
+    {name:"谢昀",role:"高级运维工程师，40岁",sprite:"jc",
+     desc:"最高级别访问权限，完全覆盖能力，审计报告终止于他的账号。那晚他在顶层。一氧化碳阈值是从他的终端调整的。"}
+   ]},
+
+  // ── Series III ────────────────────────────────────────────
+  {num:"011",group:"3",diff:"STANDARD",
+   title:"高山天文台坠落案",titleEn:"Observatory Fall",
+   teaser:"首席天文学家林文博被发现死于海拔3200米观测平台之下——短暂停电、一颗松动的安全螺栓，一次长坠。当时山顶仅有两名工作人员。",
+   suspects:[
+    {name:"周岚",role:"副研究员，41岁",sprite:"dr",
+     desc:"在天文台工作九年，始终屈居第二，始终处理着被林文博据为己功的数据。沉稳、镇定、有条不紊——那种凡事预先谋划、不留任何意外的人。"},
+    {name:"高建",role:"设备技术员，38岁",sprite:"jc",
+     desc:"山上每一颗螺栓和每一条电路都由他负责维护。他的采购账簿有可疑条目。他是唯一能在不引起任何人注意的情况下松动那根栏杆的人。"}
+   ]},
+  {num:"012",group:"3",diff:"ADVANCED",
+   title:"银谷酒庄窒息案",titleEn:"The Fermentation Cellar",
+   teaser:"酒庄庄主陈德安被发现窒息死于自己的发酵酒窖——强制通风系统遭关闭，铁门从外侧被顶死。剩下的事，二氧化碳替凶手完成了。",
+   suspects:[
+    {name:"方敏",role:"首席酿酒师，45岁",sprite:"lv",
+     desc:"十年来就酿酒理念公开争执不休。她对酒窖系统了如指掌。她想要的是把自己的名字印在酒标上——而不是他的名字。"},
+    {name:"陈立轩",role:"侄子兼市场经理，32岁",sprite:"tb",
+     desc:"庄主唯一的家人，由叔叔抚养长大，暗中积累着无人知晓的赌债。庄园是遗产。酒窖有一扇沉重的铁门，和一个极其简单的插销。"}
+   ]},
+  {num:"013",group:"3",diff:"ADVANCED",
+   title:"子夜片场坠台案",titleEn:"Midnight on Set",
+   teaser:"资深导演赵崇光在凌晨两点被一块200公斤的灯光配重砸死——安全销钉以专业工具拆除，释放电路遭蓄意改线。",
+   suspects:[
+    {name:"吴铁柱",role:"灯光总监，44岁",sprite:"ro",
+     desc:"退役军人，在舞台上精密架设灯光设备已有十五年。是片场唯一有资质操作配重系统的工作人员。他与导演之间的冲突，早已不再是低调的了。"},
+    {name:"沈诗涵",role:"女主角，28岁",sprite:"dr",
+     desc:"一颗冉冉升起的新星，正在参与她的第一部重量级制作。导演在片场的行为让她的社交媒体变得隐晦而充满敌意。但她不懂配重系统——她是演员，不是技术人员。"}
+   ]},
+  {num:"014",group:"3",diff:"EXPERT",
+   title:"海上游艇坠海案",titleEn:"Overboard",
+   teaser:"科技投资人黄汉宇被发现漂浮于自己游艇200米之外的海面上——入水前头部遭受重击。甲板监控录像已消失，存储卡槽空空如也。",
+   suspects:[
+    {name:"林世杰",role:"商业合伙人，46岁",sprite:"mw",
+     desc:"合作十年。三个月来被切断对全部资金账户的访问权限。游艇是他们惯常的会面之所。他知道哪台摄像头拍得到什么——以及哪台拍不到。"},
+    {name:"陈海涛",role:"私人船长，52岁",sprite:"dh",
+     desc:"驾驶这艘船已三年，被委以航线与船具管理之责。他有赌博问题，反复出现的债务，以及一个月前一笔来历不明的电汇记录。有人付了钱，买了什么。"}
+   ]},
+  {num:"015",group:"3",diff:"EXPERT",
+   title:"拍卖行鉴定师之死",titleEn:"The Appraiser",
+   teaser:"高级艺术鉴定师徐正言被发现死于拍卖行保险库内——头部被砸向铜质展台。一件估价一千八百万元的拍品将于次日上拍。",
+   suspects:[
+    {name:"顾维明",role:"拍卖行总监，57岁",sprite:"ga",
+     desc:"创始人之子，将家族生意经营成了债台高筑的烂摊子多年。明日的拍卖会是他最后的机会。徐正言的报告威胁将最有价值的拍品彻底撤拍。"},
+    {name:"赵月琴",role:"艺术修复专家，39岁",sprite:"it",
+     desc:"楼内唯一有能力制作高级赝品并伪造其来源记录的人。沉默、可信、一丝不苟——正是那种容易被忽视的人物特征。"}
+   ]},
+
+  // ── International Files ───────────────────────────────────
+  {num:"016",group:"4",diff:"STANDARD",
+   title:"海港餐厅投毒案",titleEn:"Harbor Poisoning",
+   teaser:"海港餐厅老板马库斯·黑尔被发现死于自己的办公桌前——肘边是半杯威士忌。中毒。与他各占一半股份的合伙人正因财务问题与他争执不休，而他的前妻至今仍从餐厅利润中分成。",
+   suspects:[
+    {name:"马库斯·韦伯",role:"商业合伙人（50%），48岁",sprite:"mw",
+     desc:"昔日机修工，后转型为餐饮业者，脾气火爆，对生意的财务走向积怨已久。那天晚上他在场，他向来如此。"},
+    {name:"戴安娜·里弗斯",role:"前妻兼注册护士，44岁",sprite:"dr",
+     desc:"离婚时争执激烈，分居协议让她得以分取餐厅收入的一定比例。护士知道该往饮料里放什么，也精确知道该放多少。"}
+   ]},
+  {num:"017",group:"4",diff:"ADVANCED",
+   title:"阿什福德画廊盗窃案",titleEn:"The Ashford Heist",
+   teaser:"一幅价值430万美元的19世纪雷诺阿画作在一夜之间从阿什福德画廊消失——警报被绕过，展柜被打开而毫无损伤，画布被整洁地取出。内部知情者，内部的手。",
+   suspects:[
+    {name:"杰拉德·阿什福德三世",role:"画廊负责人，61岁",sprite:"ga",
+     desc:"第三代传人，因失败的房地产投资债台高筑。他亲手策划了画廊中每一件藏品的展陈——包括那幅雷诺阿。走投无路的人，不是第一个打保险欺诈主意了。"},
+    {name:"莉娜·沃斯",role:"首席艺术修复师，34岁",sprite:"lv",
+     desc:"入职十四个月，负责每幅画作的实物保管。她接触那幅雷诺阿的次数比任何人都多。她持有考陶尔德艺术学院的专业资质，意味着她深知如何在不撕裂画布的情况下将其取下。"}
+   ]},
+  {num:"018",group:"4",diff:"STANDARD",
+   title:"贝尔蒙特庄园纵火案",titleEn:"The Estate Fire",
+   teaser:"退休实业家维克多·贝尔蒙特在凌晨2时15分的大火中身亡，大火吞噬了其乡间庄园的东翼。已确认使用了助燃剂。电子门禁日志显示当晚仅有两名访客。",
+   suspects:[
+    {name:"西奥·贝尔蒙特",role:"疏离的儿子，35岁",sprite:"tb",
+     desc:"因家族企业出售问题激烈争吵后，三年沉默。近日发现自己已被彻底从遗嘱中剔除。他那天晚上登门——他说是为了和解。"},
+    {name:"蕾切尔·奥卡福",role:"庄园管家，41岁",sprite:"ro",
+     desc:"管理庄园六年，掌管每一套系统、账目与安保权限。管理员权限意味着她可以打开任何门、关闭任何警报、删除任何日志——按此顺序。"}
+   ]},
+  {num:"019",group:"4",diff:"ADVANCED",
+   title:"子午线特快谋杀案",titleEn:"Meridian Express",
+   teaser:"企业举报人亨利·阿什沃思被发现死于维也纳至苏黎世夜班列车上他那上锁的卧铺包厢内——遭人刺杀。包厢从内部反锁，通风板曾被取下后又复原。",
+   suspects:[
+    {name:"朱利安·克罗斯",role:"同车乘客（相邻卧铺），45岁",sprite:"jc",
+     desc:"私人安保顾问，预订了隔壁包厢。曾受雇于阿什沃思即将举报的那家公司。体型魁梧，做事有条理。随身携带一把薄刃——他说是用来拆信封的。"},
+    {name:"娜迪亚·沃尔科夫",role:"卧铺车厢乘务员，29岁",sprite:"nv",
+     desc:"负责七号车厢旅客的舒适、包厢出入及夜间安保。她是唯一持有万能钥匙的人。她的服务记录清白——三年，零事故。直到今晚。"}
+   ]},
+  {num:"020",group:"4",diff:"EXPERT",
+   title:"银棘晚宴投毒案",titleEn:"The Silverbriar Gala",
+   teaser:"慈善家玛格丽特·银棘在自己的慈善晚宴香槟祝酒时晕倒——香槟杯中被放入氰化物。逾200名宾客，一杯毒酒，服务链条缩小至两人。",
+   suspects:[
+    {name:"多米尼克·黑尔",role:"私人律师兼遗嘱执行人，50岁",sprite:"dh",
+     desc:"担任她的私人法律顾问三年，被指定为遗嘱执行人及主要受益人。遗嘱由他亲自起草。他出席每一场活动，身着定制西装，双手始终忙个不停。"},
+    {name:"艾丽丝·田中",role:"私人主厨，36岁",sprite:"it",
+     desc:"掌管银棘宅邸厨房及所有活动餐饮七年，对玛格丽特的忠诚堪称传奇。但香槟在祝酒前曾经过她的厨房。忠诚是有代价的——也许有人已经付了这个代价。"}
+   ]},
+
+  // ── Cold Cases ────────────────────────────────────────────
+  {num:"CC-1",group:"cc",diff:"COLD",
+   title:"静默频率",titleEn:"Silent Frequency",
+   teaser:"退休密码学家韩明远被发现死于自己的无线电工作台——鼻腔喷雾中被下了毒。他已数月持续截获一段加密广播，并已逼近破译的关键时刻。",
+   suspects:[
+    {name:"严崇",role:"无线电俱乐部对手，64岁",sprite:"ga",
+     desc:"退休前是一名电气工程师，一辈子执着于甘居第二。二十年来因谁先破译那段广播而积怨难消。他知道哪个鼻腔喷雾放在哪个架子上。"},
+    {name:"韩雪",role:"远亲侄女兼药剂师，34岁",sprite:"dr",
+     desc:"她定期上门「照顾叔叔」。她具备污染鼻腔喷雾所需的药学知识。她始终注意到那套珍贵的无线电设备——注意得有那么一点过分。"}
+   ]},
+  {num:"CC-2",group:"cc",diff:"COLD",
+   title:"标本馆迷雾",titleEn:"The Taxidermy Fog",
+   teaser:"博物馆馆主罗文涛被发现死于标本工作台旁——蓄意服入砷化物。他视若珍宝、价值连城的白化孔雀标本已彻底销声匿迹。",
+   suspects:[
+    {name:"柯杰",role:"标本制作学徒，29岁",sprite:"tb",
+     desc:"在罗氏工作台旁学艺六年，等待属于自己的那份。罗文涛怀疑他私下出售标本。死亡事件发生前数周，两人关系彻底破裂。"},
+    {name:"龚宏",role:"珍稀标本收藏家，55岁",sprite:"dh",
+     desc:"他垂涎那只白化孔雀多年，每一次出价都遭拒绝。他曾对人说：「迟早那只鸟会是我的。」如今鸟已不见，罗文涛也已离世。"}
+   ]},
+  {num:"CC-3",group:"cc",diff:"COLD",
+   title:"密室的最后一题",titleEn:"The Final Puzzle",
+   teaser:"密室逃脱创始人沈括被发现死于自己密封的原型房间内——遭蓄意布置的电路电击身亡。受害者以设计谜题为生，凶手正是利用了这一点将其置于死地。",
+   suspects:[
+    {name:"周明",role:"联合创始人（运营），43岁",sprite:"mw",
+     desc:"他负责财务和管理，不懂电路。三个月前他提出收购沈括的股份，遭到拒绝。失去沈括将使公司群龙无首——还是说账算下来另有一番结果？"},
+    {name:"唐铮",role:"首席谜题工程师，35岁",sprite:"jc",
+     desc:"楼内每间密室皆出自他之手，精通电路与机关。他的合同即将不予续签，名字在任何知识产权上都不会出现。陈尸所在的那间房，正是他亲手建造的。"}
+   ]},
+  {num:"CC-4",group:"cc",diff:"COLD",
+   title:"降神会之夜",titleEn:"The Séance",
+   teaser:"知名灵媒白霜在自己的降神会上昏倒——被毒死于她当着六名目击者之面饮下的仪式葡萄酒中。烛光摇曳，香烟袅袅，酒液的倒入经过了精心安排。",
+   suspects:[
+    {name:"钱通",role:"经纪人兼经理人，52岁",sprite:"ro",
+     desc:"十一年来管理她的财务与演出——包括始终独自在侧室备好仪式葡萄酒。她近期发现他一直在中饱私囊，合作关系即将终止。"},
+    {name:"方默",role:"怀疑论者兼科学作家，40岁",sprite:"ga",
+     desc:"他参加降神会是为了当众揭穿她，称她为「当代最大骗局」。他要的是让她身败名裂——而不是让她死。表面上如此。"}
+   ]},
+  {num:"CC-5",group:"cc",diff:"COLD",
+   title:"织工的密信",titleEn:"The Weaver's Cipher",
+   teaser:"退休密码学家程九章被发现倒在自家楼梯脚下——遭人推落后伪装成意外坠落。他曾持续收到一个自称「织工」之人寄来的神秘信件。",
+   suspects:[
+    {name:"卫平",role:"对手专栏作家，58岁",sprite:"nv",
+     desc:"长年的公开竞争对手，多年来在报端嘲讽程九章的作品。他精通文字游戏与纵横字谜，却声称对密码学一无所知。他的手受过文字训练，而非密码。"},
+    {name:"阮川",role:"前博士生，44岁",sprite:"tb",
+     desc:"十二年前，程九章举报了他的剽窃行为。学位被撤销，学术生涯就此终结。此后每一年，他都在蓄积着一座无处宣泄的仇恨水库。"}
+   ]},
+];
+
+// ─── RENDER ──────────────────────────────────────────────────
+function diffClass(d) {
+  if (d === 'COLD') return 'COLD';
+  return d.toUpperCase();
+}
+
+const DIFF_LABELS = {
+  'EXPERT': '专家级',
+  'ADVANCED': '进阶级',
+  'STANDARD': '标准级',
+  'COLD': '冷案'
+};
+
+function buildCard(c) {
+  const numCC = c.group === 'cc';
+  const numBadgeClass = numCC ? 'case-num-badge cc' : 'case-num-badge';
+  const diffKey = c.diff.includes('COLD') ? 'COLD' : c.diff;
+  const canvasId0 = `spr-${c.num}-0`;
+  const canvasId1 = `spr-${c.num}-1`;
+
+  return `
+    <div class="case-card">
+      <div class="case-header">
+        <span class="${numBadgeClass}">卷宗 ${c.num}</span>
+        <div class="case-title-block">
+          <div class="case-title">${c.title}</div>
+          <div class="case-title-en">${c.titleEn}</div>
+        </div>
+        <span class="diff-badge diff-${diffKey}">${DIFF_LABELS[diffKey] || c.diff}</span>
+      </div>
+      <div class="case-teaser">${c.teaser}</div>
+      <div class="suspects-label">嫌疑人</div>
+      <div class="suspects-row">
+        ${c.suspects.map((s, i) => `
+          <div class="suspect-card">
+            <div class="mugshot-wrap">
+              <div class="mugshot-frame">
+                <div class="mugshot-ruler"></div>
+                <canvas id="${i===0?canvasId0:canvasId1}" class="mugshot-canvas" data-sprite="${s.sprite}"></canvas>
+              </div>
+              <div class="mugshot-label">嫌疑人${i===0?'甲':'乙'}</div>
+            </div>
+            <div class="suspect-info">
+              <div class="suspect-name">${s.name}</div>
+              <div class="suspect-role">${s.role}</div>
+              <div class="suspect-desc">${s.desc}</div>
+            </div>
+            <div class="redacted-corner"></div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// Populate grids
+const grids = {
+  '1': document.getElementById('grid-1'),
+  '2': document.getElementById('grid-2'),
+  'cc': document.getElementById('grid-cc'),
+  '3': document.getElementById('grid-3'),
+  '4': document.getElementById('grid-4'),
+};
+
+CASES.forEach(c => {
+  grids[c.group].insertAdjacentHTML('beforeend', buildCard(c));
+});
+
+// Render all sprites
+document.querySelectorAll('canvas[data-sprite]').forEach(canvas => {
+  const key = canvas.dataset.sprite;
+  drawSprite(canvas, key, 2);
+});
+</script>
+</body>
+</html>
